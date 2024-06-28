@@ -939,3 +939,215 @@ async placeBasketOrder123() {
         });
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+async placeBasketOrder123_lastone() {
+    this.aes.AesUtil(128, 1e3);
+    let t, e, n = localStorage.getItem("JWTtoken");
+    const requestOptions = {
+        method: "GET",
+        redirect: "follow"
+    };
+
+    fetch("http://localhost:5002/mstock/get-basketdata", requestOptions)
+        .then(res => res.json())
+        .then((result) => {
+            let finalresponse = [];
+
+            for (let index = 0; index < result.data.length; index++) {
+                const element = result.data[index];
+                // console.warn(element); return
+                 let popupdetail = {
+                    SYMBOL: element.tradingsymbol,
+                    QUANTITY: +element.quantity,
+                    PRICE: element.price != 0 && element.price != undefined ? element.price : "At Market",
+                    SEGMENT: "E",
+                    INSTRUMENT: "EQUITY",
+                    EXPIRY_DATE: "0001-01-01T00:00:00",
+                    OPT_TYPE: "",
+                    EXCHANGE: element.exchange,
+                    BUY_SELL: element.transaction_type,
+                    STRIKE_PRICE: 0
+                }
+                let e = {
+                    "qty": +element.quantity,
+                    "price": element.price != 0 && element.price != undefined ? element.price : "MKT",
+                    "odr_type": element.order_type == "MARKET" ? "MKT" : "LMT",
+                    "product_typ": element.product == "MARGIN" ? "F" : "C",
+                    "trg_prc": 0,
+                    "validity": "DAY",
+                    "disc_qty": 0,
+                    "amo": false,
+                    "sec_id": element.token,
+                    "inst_type": "EQUITY",
+                    "exch": element.exchange,
+                    "buysell": element.transaction_type == "BUY" ? "B" : "S",
+                    "gtdDate": "0000-00-00",
+                    "mktProtectionFlag": "N",
+                    "mktProtectionVal": 0,
+                    "settler": "000000000000"
+                }
+                // console.warn(e); 
+                let l = new Iu,
+                    i = localStorage.getItem("ucc_code");
+                l = l.set("Content-Type", "application/x-www-form-urlencoded");
+                let r = JSON.parse(localStorage.getItem("userdata"));
+                e.token_id = r.userdata.TOKENID, e.keyid = r.key.toString(), e.userid = r.userdata.ENTITYID.toString(),
+                    e.clienttype = r.userdata.UM_USER_TYPE.toString(), e.usercode = r.userdata.USERID.toString(),
+                    e.pan_no = r.userdata.PANNO.toString(), e.client_id = "8" == r.userdata.SUBTYPE && null != i ? i.toString() : r.userdata.ENTITYID.toString();
+                let a = this.aes.encrypt(this.envservice.salt, this.envservice.iv, n, JSON.stringify(e)),
+                    o = this.envservice.serviceUrl;
+
+                const placeOrder = async () => {
+                    try {
+                        const myHeaders = new Headers();
+                        myHeaders.append("accept", "application/json, text/plain, */*");
+                        myHeaders.append("accept-language", "en-US,en;q=0.9");
+                        myHeaders.append("authorisation", "Token " + localStorage.getItem("JWTtoken"));
+                        myHeaders.append("content-type", "application/x-www-form-urlencoded");
+                       
+                        const urlencoded = new URLSearchParams();
+                        urlencoded.append(`"${a}"`, "");
+
+                        const requestOptions = {
+                            method: "POST",
+                            headers: myHeaders,
+                            body: urlencoded,
+                            redirect: "follow"
+                        };
+
+                        this.envservice.rsConnectionEndPoint = localStorage.getItem("serviceUrl"),
+                            this.envservice.serviceUrl = this.envservice.rsConnectionEndPoint;
+
+                        let response = await fetch(this.envservice.rsConnectionEndPoint + "trade/placeorder", requestOptions)
+                        const orderresult = await response.text();
+                        let eRes = this.aes.decrypt(this.envservice.salt, this.envservice.iv, n, orderresult);
+                        let e1 = JSON.parse(eRes);
+                        console.warn("------------start place order response------------------");
+
+                        let orderresobj = {
+                            ...element,
+                            ...e1
+                        }
+                        console.warn(orderresobj);
+                        finalresponse.push(orderresobj)
+
+                        if (result.data.length - 1 === index) {
+                            function convertToCSV(objArray) {
+                                const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
+                                let str = '';
+                                let row = '';
+
+                                // Create the header row
+                                for (const index in array[0]) {
+                                    // Now convert each value to string and comma-separated
+                                    row += index + ',';
+                                }
+                                row = row.slice(0, -1);
+                                str += row + '\r\n';
+
+                                // Create the data rows
+                                for (let i = 0; i < array.length; i++) {
+                                    let line = '';
+                                    for (const index in array[i]) {
+                                        if (line !== '') line += ',';
+                                        line += array[i][index];
+                                    }
+                                    str += line + '\r\n';
+                                }
+                                return str;
+                            }
+
+                            function orderdatetime() {
+                                let now = new Date();
+
+                                // Extract the components of the date and time
+                                let year = now.getFullYear();
+                                let month = now.getMonth() + 1; // Months are zero-based
+                                let day = now.getDate();
+                                let hours = now.getHours();
+                                let minutes = now.getMinutes();
+                                let seconds = now.getSeconds();
+                            
+                                // Format the components into a string
+                                let formattedDateTime = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                                return formattedDateTime;
+                            }
+                            function removeCommasFromArray(arr) {
+                                return arr.map(item => {
+                                    let newItem = {};
+                                    for (let key in item) {
+                                        if (typeof item[key] === 'string') {
+                                            newItem[key] = item[key].replace(/,/g, '');
+                                        } else {
+                                            newItem[key] = item[key];
+                                        }
+                                    }
+                                    return newItem;
+                                });
+                            }
+                            console.warn("----------------Basket Order Final Response-----------------------")
+                            console.warn(finalresponse)
+                            console.warn("----------------Basket Order Final Response-----------------------")
+                            if(finalresponse.length>0){ 
+                            const filtercsv = removeCommasFromArray(finalresponse);
+                            const csvData = convertToCSV(filtercsv);
+                            const blob = new Blob([csvData], {
+                                type: 'text/csv;charset=utf-8;'
+                            });
+                         
+                            let datetime = orderdatetime()
+                            saveAs(blob,'BasketOrder-'+datetime+'.csv');
+                            
+                            }
+
+
+                        }
+                        console.warn("------------end place order response------------------");
+                        // console.warn(e);
+                        
+                        (e1.errorcode = "success" == e1.status) ? (this.bottomSheet.open(gS, {
+                            data: {
+                                status: e1,
+                                header: "Order Placed Successfully",
+                                scripDetails: popupdetail,
+                                from: "orderEntry"
+                            }
+                        }), this.eventEmit(e1)) : this.bottomSheet.open(gS, {
+                            data: {
+                                status: e1,
+                                header: "Order has been Rejected",
+                                scripDetails: popupdetail,
+                                from: "orderEntry"
+                            }
+                        }), this.dialogRef.close();
+
+
+
+                    } catch (error) {
+                        console.warn(error);
+                    }
+                };
+
+                placeOrder();
+            }
+
+            console.warn("````````````````````")
+            console.warn(finalresponse)
+            console.warn("````````````````````")
+        });
+
+}
+// piyush end
